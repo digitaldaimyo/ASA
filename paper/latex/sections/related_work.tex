@@ -1,0 +1,15 @@
+\section{Related Work}
+
+\ASA builds on the core idea of attention as a routing mechanism for sequence
+models \cite{vaswani2017}. Extensions such as Transformer-XL and related
+recurrence-based approaches emphasize persistence across time and provide a
+foundation for analyzing long-range dynamics \cite{dai2019}. \ASA differs by
+introducing an explicit, low-dimensional routing substrate that mediates all
+information flow.
+
+Slot-based attention mechanisms and latent-array architectures provide
+inspiration for maintaining a small set of persistent slots that aggregate
+information \cite{locatello2020,jaegle2021,jaegle2021io}. \ASA focuses on
+interpreting these slots as routing states with causal influence over factual
+outputs, and uses targeted interventions to separate routing control from
+residual content.

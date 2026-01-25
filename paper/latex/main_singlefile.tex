@@ -1,0 +1,340 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{cleveref}
+
+\newcommand{\ASA}{ASA}
+\newcommand{\ASM}{ASM}
+
+\title{Addressed State Attention (\ASA): A Routing-Control Primitive for Sequence Models}
+\author{Justin Brown\\\texttt{digitaldaimyo@gmail.com}}
+\date{}
+
+\graphicspath{{figures/}}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Addressed State Attention (\ASA) is an attention primitive that introduces a
+persistent, low-dimensional routing state into sequence models. Tokens do not
+attend to each other directly; instead, they write into and read from a small
+set of addressed slot states that persist across sequence positions and layers.
+We release a public implementation of \ASA and its language-model variant
+(\ASM), along with reproducible analysis tools. Using controlled
+finite-difference interventions, we show that factual recall is causally
+dominated by routing dynamics rather than residual token representations.
+Perturbing routing states reliably steers factual logits, while equivalent
+perturbations to residual activations have negligible effect once routing is
+fixed. These results suggest that factual recall in \ASA-based models emerges
+from trajectories through a routing control manifold, rather than from static
+content storage. \ASA thus provides both a modeling primitive and an analysis
+lens for studying memory, inertia, and controllability in sequence models.
+\end{abstract}
+
+\section{Introduction}
+
+Attention mechanisms typically entangle where information flows with what
+information is stored. Tokens attend directly to other tokens, and the same
+operation both aggregates content and determines routing \cite{vaswani2017}.
+While effective, this entanglement obscures the internal dynamics of memory
+persistence, factual recall, and control over generation. Long-range modeling
+extensions often introduce explicit recurrence or memory to manage persistence
+across time \cite{dai2019}.
+
+Addressed State Attention (\ASA) separates these concerns by introducing an
+explicit routing substrate: a small set of slot states that persist across
+sequence positions. Tokens write information into slots and later read from
+them. Routing decisions are mediated by slot addressing rather than direct
+token-to-token interaction.
+
+This separation enables two outcomes:
+
+\begin{itemize}
+  \item \textbf{New modeling behavior:} information can persist and accumulate
+  across time in a structured, low-dimensional state.
+  \item \textbf{New analysis capability:} routing can be studied, intervened on,
+  and causally compared to residual representations.
+\end{itemize}
+
+The work presented here focuses on the second outcome. We show that routing
+states exhibit longer timescales, lower intrinsic dimensionality, and stronger
+causal influence over factual outputs than token-level representations.
+
+\section{Method}
+
+\subsection{Addressed State Attention}
+
+At each layer, \ASA maintains a set of per-head slot states. A forward pass
+consists of four conceptual stages:
+
+\begin{enumerate}
+  \item \textbf{Write path:} token keys attend over learned slot keys, producing
+  write weights.
+  \item \textbf{Slot state update:} slot states aggregate token values using
+  these write weights. Slot states persist across sequence positions, allowing
+  information to accumulate.
+  \item \textbf{Read path:} token queries attend over slot states to produce read
+  vectors.
+  \item \textbf{Output projection:} read vectors are projected back into token
+  space and combined with the residual stream.
+\end{enumerate}
+
+Crucially, tokens never attend to other tokens directly. All information flow
+is mediated through the slot states. The mechanism is inspired by persistent
+slot-based attention and latent-array architectures while focusing on explicit
+routing control \cite{locatello2020,jaegle2021,jaegle2021io}.
+
+\subsection{Optional components in the public implementation}
+
+The released implementation exposes several optional components that were used
+in exploratory research and are included for completeness and
+reproducibility:
+
+\begin{itemize}
+  \item \textbf{Content read path:} a parallel token-to-token attention path
+  blended with slot reads via a learned gate. This allows partial fallback to
+  conventional attention behavior.
+  \item \textbf{Slotspace refinement:} slot-to-slot attention that allows slot
+  states to exchange information, controlled by a learned scalar gate.
+\end{itemize}
+
+These components are extensions to the core \ASA primitive, which remains the
+write $\rightarrow$ slot $\rightarrow$ read loop.
+
+\subsection{\ASA as a control system}
+
+While \ASA can be described as a memory mechanism, our experiments support a
+stronger interpretation: slot routing functions as a control system over
+content flow.
+
+Across layers and sequence positions, routing states exhibit:
+
+\begin{itemize}
+  \item \textbf{Low intrinsic dimensionality:} late-window routing trajectories
+  are often dominated by 1--3 principal components.
+  \item \textbf{Longer timescales:} routing states evolve more slowly than token
+  representations and persist across positions.
+  \item \textbf{Entropy reduction across depth:} routing distributions become
+  more committed in mid-to-late layers.
+  \item \textbf{Coherent control fields:} gradients of factual logits align
+  consistently with routing directions.
+\end{itemize}
+
+In contrast, residual hidden states exhibit higher dimensionality and weaker
+causal influence once routing is fixed. These observations are characteristic
+of a control manifold rather than a static memory lookup.
+
+\section{Experiments}
+
+The experiments in the notebooks are exploratory and heterogeneous. The public
+release focuses on representative, minimal versions of each analysis for
+clarity and reproducibility.
+
+\subsection{Sanity and reproducibility tests}
+
+We provide CPU-friendly tests that validate:
+
+\begin{itemize}
+  \item Forward and backward passes
+  \item Shape invariants
+  \item Non-degenerate gradients
+  \item Determinism under fixed seeds
+  \item Masking behavior
+  \item Routing override hooks
+  \item Intervention toggles
+\end{itemize}
+
+These tests serve as executable documentation of the \ASA control surface and
+are intended to run in constrained environments (e.g., Colab CPU).
+
+\subsection{Factual probe: Paris-margin}
+
+To study factual recall, we use a simple contrastive metric evaluated after
+prompts referencing France. This probe is not intended as a benchmark. Instead,
+it provides a scalar signal that is sensitive to factual correctness and
+amenable to controlled intervention.
+
+\subsection{Routing geometry across layers}
+
+We analyze late-window routing states using PCA and clustering:
+
+\begin{itemize}
+  \item Early layers exhibit diffuse, rotating routing mass.
+  \item Mid layers show entropy reduction and partial alignment.
+  \item Late layers exhibit coherent, low-dimensional structure despite reduced
+  explained variance.
+\end{itemize}
+
+This indicates increasing commitment and specialization of routing behavior
+across depth. \Cref{fig:timescales-vs-layer,fig:half-life-heatmap,fig:ess-heatmap}
+show the canonical visualizations for routing timescales and persistence.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.85\linewidth]{timescales_vs_layer.png}
+  \caption{Routing timescales versus layer depth.}
+  \label{fig:timescales-vs-layer}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.85\linewidth]{half_life_heatmap.png}
+  \caption{Half-life heatmap for routing persistence across layers and heads.}
+  \label{fig:half-life-heatmap}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.85\linewidth]{ess_heatmap.png}
+  \caption{Effective state size (ESS) heatmap summarizing routing concentration.}
+  \label{fig:ess-heatmap}
+\end{figure}
+
+\subsection{Finite-difference Jacobian analysis}
+
+We estimate gradients of the Paris-margin with respect to:
+
+\begin{itemize}
+  \item Routing logits (projected into routing PCA space)
+  \item Residual hidden states (projected into residual PCA space)
+\end{itemize}
+
+Key findings:
+
+\begin{itemize}
+  \item Early layers: gradients align strongly with the dominant routing PC.
+  \item Mid layers: gradients rotate across routing dimensions.
+  \item Late layers: gradients spread but remain coherent within routing space.
+  \item Residual gradients show substantially weaker and less consistent effects.
+\end{itemize}
+
+\subsection{Matched-effect interventions: routing vs. residual}
+
+To directly compare causal efficiency, we perform matched interventions:
+
+\begin{itemize}
+  \item \textbf{Routing intervention:} override routing weights along an
+  estimated control direction.
+  \item \textbf{Residual intervention:} inject perturbations into hidden states
+  while freezing routing to baseline.
+\end{itemize}
+
+Results:
+
+\begin{itemize}
+  \item Routing perturbations produce monotonic, linear changes in factual logits.
+  \item Residual perturbations produce near-zero effect under frozen routing.
+  \item The disparity grows in later layers.
+\end{itemize}
+
+This establishes routing as the dominant causal pathway for factual recall in
+\ASA-based models. \Cref{fig:second-order-scatter} provides the canonical
+comparison visualization.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.85\linewidth]{second_order_scatter.png}
+  \caption{Routing versus residual intervention effects under matched magnitude.}
+  \label{fig:second-order-scatter}
+\end{figure}
+
+\section{Related Work}
+
+\ASA builds on the core idea of attention as a routing mechanism for sequence
+models \cite{vaswani2017}. Extensions such as Transformer-XL and related
+recurrence-based approaches emphasize persistence across time and provide a
+foundation for analyzing long-range dynamics \cite{dai2019}. \ASA differs by
+introducing an explicit, low-dimensional routing substrate that mediates all
+information flow.
+
+Slot-based attention mechanisms and latent-array architectures provide
+inspiration for maintaining a small set of persistent slots that aggregate
+information \cite{locatello2020,jaegle2021,jaegle2021io}. \ASA focuses on
+interpreting these slots as routing states with causal influence over factual
+outputs, and uses targeted interventions to separate routing control from
+residual content.
+
+\section{Limitations}
+
+\begin{itemize}
+  \item No large-scale benchmarks are reported.
+  \item The Paris-margin probe is intentionally simple.
+  \item The relationship between \ASA routing and standard transformer attention
+  remains to be formally characterized.
+  \item Stability and scaling behavior at very long context lengths remain open.
+\end{itemize}
+
+\section{Reproducibility}
+
+This release includes:
+
+\begin{itemize}
+  \item MIT-licensed source code
+  \item CPU-friendly sanity tests and demos
+  \item A public pretrained checkpoint
+  \item Analysis notebooks documenting routing dynamics
+\end{itemize}
+
+The release emphasizes a clear separation between library code, experiments,
+and analysis, prioritizing runnable demos and architecture-accurate naming.
+
+\paragraph{Code and checkpoints.} The reference implementation and scripts are
+available at \url{https://github.com/digitaldaimyo/ASA}, and the public model
+checkpoint is hosted on Hugging Face at
+\url{https://huggingface.co/DigitalShogun/ASA-ASM-wikitext103-raw}.
+
+\section{Conclusion}
+
+Addressed State Attention introduces a persistent routing substrate that
+separates control from content in sequence models. Through controlled
+interventions, we show that factual recall in \ASA-based models is primarily
+mediated by routing dynamics rather than residual representations. \ASA thus
+provides both a modeling primitive and a framework for studying how sequence
+models store, retrieve, and control information over time.
+
+\appendix
+
+\section{Guidance for Repository Organization}
+
+Suggested structure for organizing code, experiments, and documentation:
+
+\begin{verbatim}
+asa/
+  core.py           # minimal ASA primitive
+  variants.py       # online / intervene variants
+  utils.py
+
+experiments/
+  sanity/
+  paris_margin/
+  routing_vs_residual/
+
+notebooks/
+  exploratory/      # raw research notebooks (archived)
+  cleaned/          # distilled analysis notebooks
+
+docs/
+  paper.md
+  figures/
+
+tests/
+  test_basic.py
+  test_masking.py
+\end{verbatim}
+
+\section{Author Context}
+
+This work was conducted independently using publicly available tools and
+compute. Findings were vetted via reproducible experiments and cross-checked
+using multiple language models as stand-ins for traditional peer discussion.
+
+\bibliographystyle{plain}
+\bibliography{refs}
+
+\end{document}

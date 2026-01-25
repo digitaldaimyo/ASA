@@ -1,0 +1,113 @@
+\section{Experiments}
+
+The experiments in the notebooks are exploratory and heterogeneous. The public
+release focuses on representative, minimal versions of each analysis for
+clarity and reproducibility.
+
+\subsection{Sanity and reproducibility tests}
+
+We provide CPU-friendly tests that validate:
+
+\begin{itemize}
+  \item Forward and backward passes
+  \item Shape invariants
+  \item Non-degenerate gradients
+  \item Determinism under fixed seeds
+  \item Masking behavior
+  \item Routing override hooks
+  \item Intervention toggles
+\end{itemize}
+
+These tests serve as executable documentation of the \ASA control surface and
+are intended to run in constrained environments (e.g., Colab CPU).
+
+\subsection{Factual probe: Paris-margin}
+
+To study factual recall, we use a simple contrastive metric evaluated after
+prompts referencing France. This probe is not intended as a benchmark. Instead,
+it provides a scalar signal that is sensitive to factual correctness and
+amenable to controlled intervention.
+
+\subsection{Routing geometry across layers}
+
+We analyze late-window routing states using PCA and clustering:
+
+\begin{itemize}
+  \item Early layers exhibit diffuse, rotating routing mass.
+  \item Mid layers show entropy reduction and partial alignment.
+  \item Late layers exhibit coherent, low-dimensional structure despite reduced
+  explained variance.
+\end{itemize}
+
+This indicates increasing commitment and specialization of routing behavior
+across depth. \Cref{fig:timescales-vs-layer,fig:half-life-heatmap,fig:ess-heatmap}
+show the canonical visualizations for routing timescales and persistence.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.85\linewidth]{timescales_vs_layer.png}
+  \caption{Routing timescales versus layer depth.}
+  \label{fig:timescales-vs-layer}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.85\linewidth]{half_life_heatmap.png}
+  \caption{Half-life heatmap for routing persistence across layers and heads.}
+  \label{fig:half-life-heatmap}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.85\linewidth]{ess_heatmap.png}
+  \caption{Effective state size (ESS) heatmap summarizing routing concentration.}
+  \label{fig:ess-heatmap}
+\end{figure}
+
+\subsection{Finite-difference Jacobian analysis}
+
+We estimate gradients of the Paris-margin with respect to:
+
+\begin{itemize}
+  \item Routing logits (projected into routing PCA space)
+  \item Residual hidden states (projected into residual PCA space)
+\end{itemize}
+
+Key findings:
+
+\begin{itemize}
+  \item Early layers: gradients align strongly with the dominant routing PC.
+  \item Mid layers: gradients rotate across routing dimensions.
+  \item Late layers: gradients spread but remain coherent within routing space.
+  \item Residual gradients show substantially weaker and less consistent effects.
+\end{itemize}
+
+\subsection{Matched-effect interventions: routing vs. residual}
+
+To directly compare causal efficiency, we perform matched interventions:
+
+\begin{itemize}
+  \item \textbf{Routing intervention:} override routing weights along an
+  estimated control direction.
+  \item \textbf{Residual intervention:} inject perturbations into hidden states
+  while freezing routing to baseline.
+\end{itemize}
+
+Results:
+
+\begin{itemize}
+  \item Routing perturbations produce monotonic, linear changes in factual logits.
+  \item Residual perturbations produce near-zero effect under frozen routing.
+  \item The disparity grows in later layers.
+\end{itemize}
+
+This establishes routing as the dominant causal pathway for factual recall in
+\ASA-based models. \Cref{fig:second-order-scatter} provides the canonical
+comparison visualization.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.85\linewidth]{second_order_scatter.png}
+  \caption{Routing versus residual intervention effects under matched magnitude.}
+  \label{fig:second-order-scatter}
+\end{figure}

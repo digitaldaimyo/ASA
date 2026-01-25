@@ -104,6 +104,7 @@ Troubleshooting:
 - `docs/`: method notes, experiment inventory, roadmap, assumptions.
 - `building_blocks/`: raw notebook archive (immutable).
 - `paper/`: draft paper-style exposition of the method.
+  - Upload `paper/latex/` to Overleaf and set `main.tex` as the root file.
 
 For full reproducibility guidance, see [REPRODUCIBILITY.md](REPRODUCIBILITY.md).
 
