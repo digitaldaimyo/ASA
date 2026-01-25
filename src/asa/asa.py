@@ -50,6 +50,9 @@ class RotaryEmbedding(nn.Module):
 
 
 def apply_rope(x: torch.Tensor, cos: torch.Tensor, sin: torch.Tensor) -> torch.Tensor:
+    if x.dim() >= 3 and cos.shape[-2] != x.shape[-2] and cos.shape[-2] == x.shape[-3]:
+        cos = cos.transpose(-3, -2)
+        sin = sin.transpose(-3, -2)
     return (x * cos) + (_rotate_half(x) * sin)
 
 
@@ -199,9 +202,9 @@ class AddressedStateAttention(nn.Module):
         slot_mask_scope: str = "batch",
     ) -> Tuple[torch.Tensor, Optional[Dict[str, torch.Tensor]]]:
         bsz, seq_len, _ = x.shape
-        q = self.Wq_read(x).view(bsz, seq_len, self.num_heads, self.head_dim)
-        k = self.Wk_write(x).view(bsz, seq_len, self.num_heads, self.head_dim)
-        v = self.Wv_write(x).view(bsz, seq_len, self.num_heads, self.head_dim)
+        q = self.Wq_read(x).view(bsz, seq_len, self.num_heads, self.head_dim).transpose(1, 2)
+        k = self.Wk_write(x).view(bsz, seq_len, self.num_heads, self.head_dim).transpose(1, 2)
+        v = self.Wv_write(x).view(bsz, seq_len, self.num_heads, self.head_dim).transpose(1, 2)
 
         if self.normalize_k:
             k = F.normalize(k, dim=-1)
@@ -211,7 +214,7 @@ class AddressedStateAttention(nn.Module):
             k = apply_rope(k, cos, sin)
 
         scale = self.head_dim**-0.5
-        write_logits = torch.einsum("bthd,hsd->bths", k, self.slot_keys) * scale
+        write_logits = torch.einsum("bhtd,hsd->bhts", k, self.slot_keys) * scale
         if noise > 0.0:
             write_logits = write_logits + noise * torch.randn_like(write_logits)
 
@@ -225,10 +228,10 @@ class AddressedStateAttention(nn.Module):
         if self.slot_dropout > 0:
             write_weights = F.dropout(write_weights, p=self.slot_dropout, training=self.training)
 
-        slot_state = torch.einsum("bths,bthd->bshd", write_weights, v) / max(1, seq_len)
+        slot_state = torch.einsum("bhts,bhtd->bhsd", write_weights, v) / max(1, seq_len)
         slot_state = self._apply_slotspace_refine(slot_state)
 
-        read_logits = torch.einsum("bthd,bshd->bths", q, slot_state) * scale
+        read_logits = torch.einsum("bhtd,bhsd->bhts", q, slot_state) * scale
         if slot_mask is not None and slot_mask_where in {"read", "both"}:
             mask = slot_mask
             if slot_mask_scope == "batch":
@@ -247,16 +250,16 @@ class AddressedStateAttention(nn.Module):
             read_weights = read_weights * mask
             read_weights = read_weights / (read_weights.sum(dim=-1, keepdim=True) + 1e-6)
 
-        read_out = torch.einsum("bths,bshd->bthd", read_weights, slot_state)
+        read_out = torch.einsum("bhts,bhsd->bhtd", read_weights, slot_state)
 
         if self.use_content_read:
-            content_logits = torch.einsum("bthd,bThd->bhtT", q, k) * scale
+            content_logits = torch.einsum("bhtd,bhTd->bhtT", q, k) * scale
             content_weights = torch.softmax(content_logits, dim=-1)
-            content_out = torch.einsum("bhtT,bThd->bthd", content_weights, v)
+            content_out = torch.einsum("bhtT,bhTd->bhtd", content_weights, v)
             gamma = torch.sigmoid(self._content_read_gamma_raw) * self.content_read_max_gamma
             read_out = read_out + gamma * content_out
 
-        out = self.out_proj(read_out.reshape(bsz, seq_len, self.embed_dim))
+        out = self.out_proj(read_out.transpose(1, 2).reshape(bsz, seq_len, self.embed_dim))
 
         info: Optional[Dict[str, torch.Tensor]] = None
         if return_info:

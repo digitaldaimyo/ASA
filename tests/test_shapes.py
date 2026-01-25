@@ -15,7 +15,7 @@ def test_shapes_basic():
     out, info = attn(x, return_info=True)
     assert out.shape == x.shape
     assert "read_weights" in info
-    assert info["read_weights"].shape[:3] == (2, 5, 4)
+    assert info["read_weights"].shape[:3] == (2, 4, 5)
 
 
 def test_shapes_toggle():
