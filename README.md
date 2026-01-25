@@ -8,9 +8,13 @@ with scripts, tests, and CI.
 
 **Status:** research code (release candidate).
 
-## Quickstart (Colab)
+## Colab Notebooks
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/digitaldaimyo/ASA/blob/main/notebooks/ASA_Colab_Quickstart.ipynb)
+- **Functional Validation Quickstart**  
+  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/digitaldaimyo/ASA/blob/main/notebooks/ASA_Colab_Quickstart.ipynb)
+
+- **HF Checkpoint + Canon Probes + Mini Finetune**  
+  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/digitaldaimyo/ASA/blob/main/notebooks/ASA_HF_Checkpoint_CanonProbes_and_MiniFinetune.ipynb)
 
 What this notebook validates:
 - Core forward-pass shape invariants across ASA variants.
