@@ -1,0 +1,19 @@
+cff-version: 1.2.0
+title: "Addressed State Attention (ASA)"
+message: "If you use this software, please cite it as below."
+authors:
+  - family-names: "Brown"
+    given-names: "Justin"
+    email: "digitaldaimyo@gmail.com"
+version: 0.1.0
+date-released: "2026-01-01"
+url: "https://github.com/digitaldaimyo/ASA"
+preferred-citation:
+  type: software
+  title: "Addressed State Attention (ASA)"
+  authors:
+    - family-names: "Brown"
+      given-names: "Justin"
+      email: "digitaldaimyo@gmail.com"
+  year: 2026
+  url: "https://github.com/digitaldaimyo/ASA"
