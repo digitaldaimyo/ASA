@@ -186,6 +186,14 @@ class AddressedStateAttention(nn.Module):
         delta = self.slot_out(refined).unsqueeze(2)
         return slot_state + gate * delta
 
+    @staticmethod
+    def _apply_hard_mask_and_renorm(
+        weights: torch.Tensor, mask: torch.Tensor
+    ) -> torch.Tensor:
+        masked = weights.masked_fill(~mask, 0.0)
+        denom = masked.sum(dim=-1, keepdim=True)
+        return torch.where(denom > 0, masked / denom, torch.zeros_like(masked))
+
     def forward(
         self,
         x: torch.Tensor,
@@ -242,6 +250,13 @@ class AddressedStateAttention(nn.Module):
             read_weights = read_weights_override
         else:
             read_weights = torch.softmax(read_logits / self.read_temperature, dim=-1)
+            read_weights = torch.nan_to_num(read_weights, nan=0.0, posinf=0.0, neginf=0.0)
+
+        if slot_mask is not None and slot_mask_where in {"read", "both"}:
+            mask = slot_mask
+            if slot_mask_scope == "batch":
+                mask = mask[None, None, None, :]
+            read_weights = self._apply_hard_mask_and_renorm(read_weights, mask)
 
         if routing_mode == "topk" and routing_topk is not None:
             topk = torch.topk(read_weights, routing_topk, dim=-1)
