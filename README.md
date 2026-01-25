@@ -8,6 +8,19 @@ with scripts, tests, and CI.
 
 **Status:** research code (release candidate).
 
+## Quickstart (Colab)
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/digitaldaimyo/ASA/blob/main/notebooks/ASA_Colab_Quickstart.ipynb)
+
+What this notebook validates:
+- Core forward-pass shape invariants across ASA variants.
+- Gradient flow and parameter updates on a tiny optimization loop.
+- Seeded determinism on CPU (eval mode).
+- Slot/head sweep to ensure no shape crashes.
+- Slot masking behavior and finite outputs.
+- Routing override hook behavior (if exposed).
+- Online and intervention variant toggles.
+
 ## Quickstart
 
 ```bash
