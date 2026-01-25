@@ -252,11 +252,13 @@ class AddressedStateAttention(nn.Module):
             read_weights = torch.softmax(read_logits / self.read_temperature, dim=-1)
             read_weights = torch.nan_to_num(read_weights, nan=0.0, posinf=0.0, neginf=0.0)
 
+        mask_any = None
         if slot_mask is not None and slot_mask_where in {"read", "both"}:
             mask = slot_mask
             if slot_mask_scope == "batch":
                 mask = mask[None, None, None, :]
             read_weights = self._apply_hard_mask_and_renorm(read_weights, mask)
+            mask_any = mask.any(dim=-1, keepdim=True)
 
         if routing_mode == "topk" and routing_topk is not None:
             topk = torch.topk(read_weights, routing_topk, dim=-1)
@@ -273,6 +275,8 @@ class AddressedStateAttention(nn.Module):
             content_out = torch.einsum("bhtT,bhTd->bhtd", content_weights, v)
             gamma = torch.sigmoid(self._content_read_gamma_raw) * self.content_read_max_gamma
             read_out = read_out + gamma * content_out
+        if mask_any is not None:
+            read_out = read_out * mask_any
 
         out = self.out_proj(read_out.transpose(1, 2).reshape(bsz, seq_len, self.embed_dim))
 

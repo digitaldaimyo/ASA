@@ -37,6 +37,29 @@ python scripts/train_mini.py --device cpu --seed 1337 --outdir runs/train_mini -
 python scripts/probe_paris_margin.py --device cpu --seed 1337 --outdir runs/probes
 ```
 
+## Hugging Face Demo (CPU)
+
+Run a smoke inference pass using the published checkpoint:
+
+```bash
+python -m asa.demo_hf --repo DigitalShogun/ASA-ASM-wikitext103-raw
+```
+
+Expected output (abbreviated):
+
+```
+Downloading from DigitalShogun/ASA-ASM-wikitext103-raw
+Checkpoint state dict source: model
+Loaded checkpoint with strict=True
+PASS: forward logits shape + finite
+Generated 20 tokens. Final shape: (1, 52)
+```
+
+Troubleshooting:
+- If the HF repo is private, set `HF_TOKEN` in your environment.
+- If downloads are slow, check the Hugging Face cache at `~/.cache/huggingface`.
+- Use `--ckpt` to point to a specific filename in the repo.
+
 ## What is ASA?
 
 - A slot-based attention primitive that learns a small set of routing anchors.
