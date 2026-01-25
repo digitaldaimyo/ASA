@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+.dist/
+.build/
+
+# Virtualenv
+.venv/
+venv/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Logs and outputs
+runs/
+outputs/
+
+# Misc
+.DS_Store

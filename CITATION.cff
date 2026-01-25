@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+title: "Addressed State Attention (ASA)"
+message: "If you use this software, please cite it as below."
+authors:
+  - family-names: "Placeholder"
+    given-names: "Author"
+version: 0.1.0
+date-released: "2026-01-01"
+url: "https://example.com/asa"
+preferred-citation:
+  type: software
+  title: "Addressed State Attention (ASA)"
+  authors:
+    - family-names: "Placeholder"
+      given-names: "Author"
+  year: 2026
+  url: "https://example.com/asa"

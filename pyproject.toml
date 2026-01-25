@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=67", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "asa"
+version = "0.1.1"
+description = "Addressed State Attention (ASA) and Addressed State Models (ASM)"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+authors = [
+  { name = "Placeholder Author", email = "author@example.com" }
+]
+classifiers = [
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+]
+keywords = ["attention", "slot attention", "language model", "research"]
+dependencies = [
+  "torch>=2.0.0",
+  "numpy>=1.23.0",
+  "matplotlib>=3.7.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=7.4.0",
+]
+
+[project.urls]
+Homepage = "https://example.com/asa"
+Repository = "https://example.com/asa"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]
