@@ -2,17 +2,22 @@
 
 from __future__ import annotations
 
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Type
 
 import torch
 import torch.nn as nn
 
+from asa.asa import (
+    AddressedStateAttention,
+    AddressedStateAttentionIntervene,
+    AddressedStateAttentionOnline,
+)
 from asa.asm_block import ASMBlock
 from asa.config import ASMTrainConfig
 
 
 class ASMLanguageModel(nn.Module):
-    def __init__(self, cfg: ASMTrainConfig) -> None:
+    def __init__(self, cfg: ASMTrainConfig, attn_class: Type[nn.Module]) -> None:
         super().__init__()
         self.cfg = cfg
         self.token_emb = nn.Embedding(cfg.vocab_size, cfg.embed_dim)
@@ -27,6 +32,7 @@ class ASMLanguageModel(nn.Module):
                     num_slots=cfg.num_slots,
                     mlp_ratio=cfg.mlp_ratio,
                     dropout=cfg.dropout,
+                    attn_class=attn_class,
                     read_temperature=cfg.read_temperature,
                     write_temperature=cfg.write_temperature,
                     slot_dropout=cfg.slot_dropout,
@@ -89,5 +95,16 @@ class ASMLanguageModel(nn.Module):
         return logits, infos
 
 
-def build_model_from_cfg(cfg: ASMTrainConfig) -> ASMLanguageModel:
-    return ASMLanguageModel(cfg)
+def _resolve_attn_class(variant: str) -> Type[nn.Module]:
+    normalized = variant.strip().lower()
+    if normalized == "baseline":
+        return AddressedStateAttention
+    if normalized == "online":
+        return AddressedStateAttentionOnline
+    if normalized == "intervene":
+        return AddressedStateAttentionIntervene
+    raise ValueError(f"Unknown ASA variant: {variant}")
+
+
+def build_model_from_cfg(cfg: ASMTrainConfig, variant: str = "baseline") -> ASMLanguageModel:
+    return ASMLanguageModel(cfg, attn_class=_resolve_attn_class(variant))

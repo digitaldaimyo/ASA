@@ -41,12 +41,36 @@ python scripts/train_mini.py --device cpu --seed 1337 --outdir runs/train_mini -
 python scripts/probe_paris_margin.py --device cpu --seed 1337 --outdir runs/probes
 ```
 
+## Reference checkpoint
+
+The v0.1.x release artifacts reference a public ASM checkpoint trained on
+WikiText-103 (raw) using the baseline ASA/ASM configuration.
+
+- **HF repo:** `DigitalShogun/ASA-ASM-wikitext103-raw`
+- **Checkpoint filename:** `ASA_ASM_wt103-rawv1_gpt2_T1024_L21_D384_H8_K16_M32_ropek1_alibi1_gamma1_step75000_best.pt`
+- **What it enables:** running canonical probes and the Colab notebooks
+- **Compatibility:** the loader normalizes legacy naming; CPU inference is
+  supported for small demos
+
 ## Hugging Face Demo (CPU)
 
 Run a smoke inference pass using the published checkpoint:
 
 ```bash
 python -m asa.demo_hf --repo DigitalShogun/ASA-ASM-wikitext103-raw
+```
+
+Or load it in Python with checkpoint compatibility helpers:
+
+```python
+from asa.load_pretrained import load_pretrained
+
+model, report, cfg = load_pretrained(
+    repo_id="DigitalShogun/ASA-ASM-wikitext103-raw",
+    filename=None,
+    variant="baseline",
+    device="cpu",
+)
 ```
 
 Expected output (abbreviated):
@@ -89,5 +113,5 @@ For full reproducibility guidance, see [REPRODUCIBILITY.md](REPRODUCIBILITY.md).
 - [x] Scripts for smoke test, mini training, and Paris-margin probe.
 - [x] Minimal tests and CI workflow.
 - [x] Documentation for method, experiments, roadmap, assumptions.
-- [x] Reproducibility notes and placeholder citation metadata.
-- [ ] Train and publish a reference checkpoint for benchmark comparisons.
+- [x] Reproducibility notes and citation metadata.
+- [x] Publish a reference checkpoint for canonical probes.

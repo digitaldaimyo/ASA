@@ -8,6 +8,20 @@ source .venv/bin/activate
 pip install -e .[dev]
 ```
 
+## Reference checkpoint download
+
+```python
+from huggingface_hub import hf_hub_download
+
+repo_id = "DigitalShogun/ASA-ASM-wikitext103-raw"
+filename = "ASA_ASM_wt103-rawv1_gpt2_T1024_L21_D384_H8_K16_M32_ropek1_alibi1_gamma1_step75000_best.pt"
+path = hf_hub_download(repo_id=repo_id, filename=filename)
+```
+
+Notes:
+- CPU-only inference is supported for the provided demos and probes.
+- Set `HF_TOKEN` if the repository is private.
+
 ## Smoke test
 
 ```bash

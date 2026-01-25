@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = { file = "LICENSE" }
 authors = [
-  { name = "Placeholder Author", email = "author@example.com" }
+  { name = "Justin Brown", email = "digitaldaimyo@gmail.com" }
 ]
 classifiers = [
   "License :: OSI Approved :: MIT License",
@@ -30,8 +30,8 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://example.com/asa"
-Repository = "https://example.com/asa"
+Homepage = "https://github.com/digitaldaimyo/ASA"
+Repository = "https://github.com/digitaldaimyo/ASA"
 
 [project.scripts]
 asa-demo-hf = "asa.demo_hf:main"

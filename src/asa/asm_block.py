@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Dict, Optional, Tuple
+import inspect
+from typing import Dict, Optional, Tuple, Type
 
 import torch
 import torch.nn as nn
@@ -19,15 +20,16 @@ class ASMBlock(nn.Module):
         num_slots: int,
         mlp_ratio: float = 4.0,
         dropout: float = 0.1,
+        attn_class: Type[nn.Module] = AddressedStateAttention,
         **asa_kwargs,
     ) -> None:
         super().__init__()
         self.ln_1 = nn.LayerNorm(embed_dim)
-        self.attn = AddressedStateAttention(
+        self.attn = attn_class(
             embed_dim=embed_dim,
             num_heads=num_heads,
             num_slots=num_slots,
-            **asa_kwargs,
+            **self._filter_kwargs(attn_class, asa_kwargs),
         )
         self.ln_2 = nn.LayerNorm(embed_dim)
         hidden_dim = int(embed_dim * mlp_ratio)
@@ -38,6 +40,12 @@ class ASMBlock(nn.Module):
             nn.Linear(hidden_dim, embed_dim),
             nn.Dropout(dropout),
         )
+
+    @staticmethod
+    def _filter_kwargs(attn_class: Type[nn.Module], kwargs: Dict) -> Dict:
+        signature = inspect.signature(attn_class.__init__)
+        allowed = {name for name in signature.parameters if name != "self"}
+        return {key: value for key, value in kwargs.items() if key in allowed}
 
     def forward(
         self,

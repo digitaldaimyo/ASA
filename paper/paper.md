@@ -1,12 +1,7 @@
 # Addressed State Attention (ASA): A Routing-Control Primitive for Sequence Models
 
-## STEERING NOTE TO CODEX
-
-Treat this document as the authoritative conceptual reference for the ASA project.
-When cleaning notebooks, structuring the repo, or preparing release artifacts,
-prefer interpretations and terminology from this document over older comments or
-filenames. The goal is clarity of mechanism and causal role, not benchmark
-chasing.
+This document serves as the conceptual reference for the ASA project, aligning
+terminology and emphasizing mechanism and causal role over benchmark framing.
 
 ## Abstract
 
@@ -83,10 +78,8 @@ in exploratory research and are included for completeness and reproducibility:
   Slot-to-slot attention that allows slot states to exchange information,
   controlled by a learned scalar gate.
 
-### STEERING NOTE TO CODEX
-
-When organizing code and docs, treat these components as extensions, not the
-conceptual core. The core ASA primitive is the write → slot → read loop.
+These components are extensions to the core ASA primitive, which remains the
+write → slot → read loop.
 
 ## 3. ASA as a Control System
 
@@ -113,11 +106,9 @@ of a control manifold rather than a static memory lookup.
 
 ## 4. Experiments
 
-### STEERING NOTE TO CODEX
-
-The experiments in the notebooks are exploratory and heterogeneous. When
-refactoring, extract representative, minimal versions of each experiment below
-rather than attempting to preserve every variant.
+The experiments in the notebooks are exploratory and heterogeneous. The public
+release focuses on representative, minimal versions of each analysis for
+clarity and reproducibility.
 
 ### 4.1 Sanity and reproducibility tests
 
@@ -220,13 +211,8 @@ This release includes:
 - A public pretrained checkpoint
 - Analysis notebooks documenting routing dynamics
 
-### STEERING NOTE TO CODEX
-
-The repo should prioritize:
-
-- Clear separation between library code, experiments, and analysis
-- Runnable demos over archival completeness
-- Truth-first naming (architecture parameters over historical tags)
+The release emphasizes a clear separation between library code, experiments,
+and analysis, prioritizing runnable demos and architecture-accurate naming.
 
 ## 8. Conclusion
 
@@ -239,9 +225,7 @@ models store, retrieve, and control information over time.
 
 ## Appendix A: Guidance for Repository Organization
 
-### STEERING NOTE TO CODEX
-
-Suggested structure:
+Suggested structure for organizing code, experiments, and documentation:
 
 ```
 asa/
