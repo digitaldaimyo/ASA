@@ -1,0 +1,27 @@
+\section{Guidance for Repository Organization}
+
+Suggested structure for organizing code, experiments, and documentation:
+
+\begin{verbatim}
+asa/
+  core.py           # minimal ASA primitive
+  variants.py       # online / intervene variants
+  utils.py
+
+experiments/
+  sanity/
+  paris_margin/
+  routing_vs_residual/
+
+notebooks/
+  exploratory/      # raw research notebooks (archived)
+  cleaned/          # distilled analysis notebooks
+
+docs/
+  paper.md
+  figures/
+
+tests/
+  test_basic.py
+  test_masking.py
+\end{verbatim}

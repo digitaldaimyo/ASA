@@ -17,10 +17,13 @@ CANONICAL_KEYS_PREFIXES = (
 
 SAFE_MISSING_PATTERNS: Tuple[str, ...] = (
     r"^pos_emb\.weight$",
+    # Legacy HF checkpoints do not store alibi slopes or MLP biases.
+    r"^blocks\.\d+\.attn\._alibi_slopes$",
     r"^blocks\.\d+\.attn\._alibi_strength_param$",
     r"^blocks\.\d+\.attn\._content_read_gamma_raw$",
     r"^blocks\.\d+\.attn\._slotspace_gate_raw$",
     r"^blocks\.\d+\.attn\.slot_(in|q|k|v|out)\.(weight|bias)$",
+    r"^blocks\.\d+\.mlp\.(0|3)\.bias$",
     r"^blocks\.\d+\.attn\.rope\.inv_freq$",
     r"^blocks\.\d+\.attn\.rope_slotspace\.inv_freq$",
 )
