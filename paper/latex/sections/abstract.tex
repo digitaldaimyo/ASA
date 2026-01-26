@@ -1,0 +1,16 @@
+\begin{abstract}
+Addressed State Attention (\ASA) is an attention primitive that introduces a
+persistent, low-dimensional routing state into sequence models. Tokens do not
+attend to each other directly; instead, they write into and read from a small
+set of addressed slot states that persist across sequence positions and layers.
+We release a public implementation of \ASA and its language-model variant
+(\ASM), along with reproducible analysis tools. Using controlled
+finite-difference interventions, we show that factual recall is causally
+dominated by routing dynamics rather than residual token representations.
+Perturbing routing states reliably steers factual logits, while equivalent
+perturbations to residual activations have negligible effect once routing is
+fixed. These results suggest that factual recall in \ASA-based models emerges
+from trajectories through a routing control manifold, rather than from static
+content storage. \ASA thus provides both a modeling primitive and an analysis
+lens for studying memory, inertia, and controllability in sequence models.
+\end{abstract}
