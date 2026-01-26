@@ -1,0 +1,28 @@
+\section{Introduction}
+
+Attention mechanisms typically entangle where information flows with what
+information is stored. Tokens attend directly to other tokens, and the same
+operation both aggregates content and determines routing \cite{vaswani2017}.
+While effective, this entanglement obscures the internal dynamics of memory
+persistence, factual recall, and control over generation. Long-range modeling
+extensions often introduce explicit recurrence or memory to manage persistence
+across time \cite{dai2019}.
+
+Addressed State Attention (\ASA) separates these concerns by introducing an
+explicit routing substrate: a small set of slot states that persist across
+sequence positions. Tokens write information into slots and later read from
+them. Routing decisions are mediated by slot addressing rather than direct
+token-to-token interaction.
+
+This separation enables two outcomes:
+
+\begin{itemize}
+  \item \textbf{New modeling behavior:} information can persist and accumulate
+  across time in a structured, low-dimensional state.
+  \item \textbf{New analysis capability:} routing can be studied, intervened on,
+  and causally compared to residual representations.
+\end{itemize}
+
+The work presented here focuses on the second outcome. We show that routing
+states exhibit longer timescales, lower intrinsic dimensionality, and stronger
+causal influence over factual outputs than token-level representations.
