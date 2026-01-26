@@ -43,15 +43,19 @@ class ASMLanguageModel(nn.Module):
                     use_alibi_write=cfg.use_alibi_write,
                     alibi_strength_init=cfg.alibi_strength_init,
                     learn_alibi_strength=cfg.learn_alibi_strength,
+                    min_strength=cfg.min_strength,
                     use_content_read=cfg.use_content_read,
                     content_read_init=cfg.content_read_init,
                     content_read_max_gamma=cfg.content_read_max_gamma,
+                    slotspace_dropout=cfg.slotspace_dropout,
+                    slotspace_signed_weights=cfg.slotspace_signed_weights,
+                    use_rope_slotspace=cfg.use_rope_slotspace,
+                    rope_base_slotspace=cfg.rope_base_slotspace,
                     write_chunk_size=cfg.write_chunk_size,
                     slotspace_dim=cfg.slotspace_dim,
                     slotspace_chunk_size=cfg.slotspace_chunk_size,
                     use_slotspace_refine=cfg.use_slotspace_refine,
                     slotspace_gate_init=cfg.slotspace_gate_init,
-                    slotspace_gate_max=cfg.slotspace_gate_max,
                     enable_compiled=cfg.enable_compiled,
                 )
                 for _ in range(cfg.num_layers)
@@ -65,10 +69,17 @@ class ASMLanguageModel(nn.Module):
     def forward(
         self,
         input_ids: torch.Tensor,
+        attention_mask: Optional[torch.Tensor] = None,
         *,
         return_info: bool = False,
-        info_level: str = "basic",
-        info_cfg: Optional[Dict[str, bool]] = None,
+        routing_mode: str = "softmax",
+        routing_topk: int = 2,
+        read_weights_override: Optional[torch.Tensor] = None,
+        routing_noise: Optional[str] = None,
+        routing_noise_scale: float = 1.0,
+        slot_mask: Optional[torch.Tensor] = None,
+        slot_mask_where: str = "read",
+        slot_mask_scope: str = "all",
         **asa_kwargs,
     ) -> Tuple[torch.Tensor, Optional[List[Dict[str, torch.Tensor]]]]:
         bsz, seq_len = input_ids.shape
@@ -82,9 +93,16 @@ class ASMLanguageModel(nn.Module):
         for block in self.blocks:
             x, info = block(
                 x,
+                attention_mask=attention_mask,
                 return_info=return_info,
-                info_level=info_level,
-                info_cfg=info_cfg,
+                routing_mode=routing_mode,
+                routing_topk=routing_topk,
+                read_weights_override=read_weights_override,
+                routing_noise=routing_noise,
+                routing_noise_scale=routing_noise_scale,
+                slot_mask=slot_mask,
+                slot_mask_where=slot_mask_where,
+                slot_mask_scope=slot_mask_scope,
                 **asa_kwargs,
             )
             if return_info and infos is not None:

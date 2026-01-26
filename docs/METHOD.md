@@ -6,14 +6,17 @@ ASA routes token information into a small set of persistent slots. Each token
 produces write keys/values, which are aggregated into slot states; read queries
 then attend over slot states and project back into the token stream. The public
 implementation in `src/asa/asa.py` preserves checkpoint-critical parameter names
-from the notebooks while providing a simplified, runnable baseline.
+from the notebooks while matching the cleaned, checkpoint-stable reference
+implementation (streaming write/read scan, slot masking controls, and optional
+slotspace refinement).
 
 Core concepts:
 - **Slots** are learned keys that receive writes and serve reads.
 - **Write path** aggregates token information into slot states.
 - **Read path** queries slot states back into the sequence.
 - Optional **content read** attends over token keys directly.
-- Optional **slotspace refinement** runs a slot-to-slot attention pass.
+- Optional **slotspace refinement** runs a slot-space linear-attention scan and
+  decodes additional slot deltas.
 
 ## Addressed State Models (ASM)
 

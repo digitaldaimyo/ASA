@@ -47,22 +47,45 @@ class ASMBlock(nn.Module):
         allowed = {name for name in signature.parameters if name != "self"}
         return {key: value for key, value in kwargs.items() if key in allowed}
 
+    @staticmethod
+    def _filter_forward_kwargs(attn: nn.Module, kwargs: Dict) -> Dict:
+        signature = inspect.signature(attn.forward)
+        allowed = {name for name in signature.parameters if name != "self"}
+        return {key: value for key, value in kwargs.items() if key in allowed}
+
     def forward(
         self,
         x: torch.Tensor,
+        attention_mask: Optional[torch.Tensor] = None,
         *,
         return_info: bool = False,
-        info_level: str = "basic",
-        info_cfg: Optional[Dict[str, bool]] = None,
+        routing_mode: str = "softmax",
+        routing_topk: int = 2,
+        read_weights_override: Optional[torch.Tensor] = None,
+        routing_noise: Optional[str] = None,
+        routing_noise_scale: float = 1.0,
+        slot_mask: Optional[torch.Tensor] = None,
+        slot_mask_where: str = "read",
+        slot_mask_scope: str = "all",
         **asa_kwargs,
     ) -> Tuple[torch.Tensor, Optional[Dict[str, torch.Tensor]]]:
         residual = x
+        forward_kwargs = dict(
+            attention_mask=attention_mask,
+            return_info=return_info,
+            routing_mode=routing_mode,
+            routing_topk=routing_topk,
+            read_weights_override=read_weights_override,
+            routing_noise=routing_noise,
+            routing_noise_scale=routing_noise_scale,
+            slot_mask=slot_mask,
+            slot_mask_where=slot_mask_where,
+            slot_mask_scope=slot_mask_scope,
+        )
+        forward_kwargs.update(asa_kwargs)
         attn_out, info = self.attn(
             self.ln_1(x),
-            return_info=return_info,
-            info_level=info_level,
-            info_cfg=info_cfg,
-            **asa_kwargs,
+            **self._filter_forward_kwargs(self.attn, forward_kwargs),
         )
         x = residual + attn_out
         x = x + self.mlp(self.ln_2(x))
