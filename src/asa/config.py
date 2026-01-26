@@ -18,8 +18,8 @@ class ASMTrainConfig:
     seed: int = 1337
 
     # Sample budgets
-    train_samples_target: int = 100_000
-    val_samples_target: int = 5_000
+    train_samples_target: int = 100_000_000
+    val_samples_target: int = 25_000
 
     # Training
     batch_size: int = 64
@@ -35,7 +35,7 @@ class ASMTrainConfig:
     # Model
     vocab_size: int = 50257
     embed_dim: int = 384
-    num_layers: int = 6
+    num_layers: int = 23
     num_heads: int = 8
     num_slots: int = 32
     mlp_ratio: float = 4.0
@@ -56,17 +56,21 @@ class ASMTrainConfig:
     use_alibi_write: bool = True
     alibi_strength_init: float = 0.1
     learn_alibi_strength: bool = True
+    min_strength: float = 0.0
 
     # Content read / slotspace refine
-    use_content_read: bool = False
-    content_read_init: float = -2.0
+    use_content_read: bool = True
+    content_read_init: float = -4.0
     content_read_max_gamma: float = 3.0
-    write_chunk_size: int = 0
+    write_chunk_size: int = 128
     slotspace_dim: int = 64
-    slotspace_chunk_size: int = 0
-    use_slotspace_refine: bool = False
-    slotspace_gate_init: float = -3.0
-    slotspace_gate_max: float = 1.0
+    slotspace_chunk_size: int = 128
+    use_slotspace_refine: bool = True
+    slotspace_gate_init: float = -4.0
+    slotspace_dropout: float = 0.05
+    slotspace_signed_weights: bool = True
+    use_rope_slotspace: bool = True
+    rope_base_slotspace: float = 100000.0
 
     # Misc
     enable_compiled: bool = False
