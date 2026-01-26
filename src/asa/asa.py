@@ -158,11 +158,11 @@ class AddressedStateAttention(nn.Module):
         self._slotspace_gate_raw = nn.Parameter(torch.tensor(slotspace_gate_init))
 
         # Slot-space refinement projections (kept for checkpoint compatibility)
-        self.slot_in = nn.Linear(embed_dim, self.slotspace_dim, bias=False)
+        self.slot_in = nn.Linear(self.head_dim, self.slotspace_dim, bias=False)
         self.slot_q = nn.Linear(self.slotspace_dim, self.slotspace_dim, bias=False)
         self.slot_k = nn.Linear(self.slotspace_dim, self.slotspace_dim, bias=False)
         self.slot_v = nn.Linear(self.slotspace_dim, self.slotspace_dim, bias=False)
-        self.slot_out = nn.Linear(self.slotspace_dim, embed_dim, bias=False)
+        self.slot_out = nn.Linear(self.slotspace_dim, self.head_dim, bias=False)
 
         self.rope = RotaryEmbedding(self.head_dim, base=rope_base)
         self.rope_slotspace = RotaryEmbedding(
