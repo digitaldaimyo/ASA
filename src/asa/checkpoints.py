@@ -17,6 +17,7 @@ CANONICAL_KEYS_PREFIXES = (
 
 SAFE_MISSING_PATTERNS: Tuple[str, ...] = (
     r"^pos_emb\.weight$",
+    # Legacy HF checkpoints do not store alibi slopes or MLP biases.
     r"^blocks\.\d+\.attn\._alibi_slopes$",
     r"^blocks\.\d+\.attn\._alibi_strength_param$",
     r"^blocks\.\d+\.attn\._content_read_gamma_raw$",
