@@ -158,11 +158,11 @@ class AddressedStateAttention(nn.Module):
         self._slotspace_gate_raw = nn.Parameter(torch.tensor(slotspace_gate_init))
 
         # Slot-space refinement projections (kept for checkpoint compatibility)
-        self.slot_in = nn.Linear(self.head_dim, self.slotspace_dim, bias=False)
+        self.slot_in = nn.Linear(self.embed_dim, self.slotspace_dim, bias=False)
         self.slot_q = nn.Linear(self.slotspace_dim, self.slotspace_dim, bias=False)
         self.slot_k = nn.Linear(self.slotspace_dim, self.slotspace_dim, bias=False)
         self.slot_v = nn.Linear(self.slotspace_dim, self.slotspace_dim, bias=False)
-        self.slot_out = nn.Linear(self.slotspace_dim, self.head_dim, bias=False)
+        self.slot_out = nn.Linear(self.slotspace_dim, self.embed_dim, bias=False)
 
         self.rope = RotaryEmbedding(self.head_dim, base=rope_base)
         self.rope_slotspace = RotaryEmbedding(
@@ -173,8 +173,13 @@ class AddressedStateAttention(nn.Module):
     def _apply_slotspace_refine(self, slot_state: torch.Tensor) -> torch.Tensor:
         if not self.use_slotspace_refine:
             return slot_state
-        bsz, num_slots, num_heads, head_dim = slot_state.shape
-        slot_flat = slot_state.mean(dim=2).reshape(bsz, num_slots, head_dim)
+        bsz, num_heads, num_slots, head_dim = slot_state.shape
+        if self.slot_in.in_features == self.embed_dim:
+            slot_flat = slot_state.permute(0, 2, 1, 3).reshape(bsz, num_slots, self.embed_dim)
+            output_mode = "embed_dim"
+        else:
+            slot_flat = slot_state.mean(dim=1)
+            output_mode = "head_dim"
         slot_emb = self.slot_in(slot_flat)
         q = self.slot_q(slot_emb)
         k = self.slot_k(slot_emb)
@@ -183,7 +188,11 @@ class AddressedStateAttention(nn.Module):
         attn = torch.softmax(torch.matmul(q, k.transpose(-2, -1)) * scale, dim=-1)
         refined = torch.matmul(attn, v)
         gate = torch.sigmoid(self._slotspace_gate_raw) * self.slotspace_gate_max
-        delta = self.slot_out(refined).unsqueeze(2)
+        delta = self.slot_out(refined)
+        if output_mode == "embed_dim":
+            delta = delta.reshape(bsz, num_slots, num_heads, head_dim).permute(0, 2, 1, 3)
+        else:
+            delta = delta.unsqueeze(1).expand(bsz, num_heads, num_slots, head_dim)
         return slot_state + gate * delta
 
     @staticmethod
