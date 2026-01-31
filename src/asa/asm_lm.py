@@ -90,7 +90,7 @@ class ASMLanguageModel(nn.Module):
         x = self.drop(x)
 
         infos: Optional[List[Dict[str, torch.Tensor]]] = [] if return_info else None
-        for block in self.blocks:
+        for li, block in enumerate(self.blocks):
             x, info = block(
                 x,
                 attention_mask=attention_mask,
@@ -103,6 +103,7 @@ class ASMLanguageModel(nn.Module):
                 slot_mask=slot_mask,
                 slot_mask_where=slot_mask_where,
                 slot_mask_scope=slot_mask_scope,
+                li=li,
                 **asa_kwargs,
             )
             if return_info and infos is not None:
