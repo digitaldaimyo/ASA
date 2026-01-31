@@ -67,6 +67,7 @@ class ASMBlock(nn.Module):
         slot_mask: Optional[torch.Tensor] = None,
         slot_mask_where: str = "read",
         slot_mask_scope: str = "all",
+        layer_idx: Optional[int] = None,
         **asa_kwargs,
     ) -> Tuple[torch.Tensor, Optional[Dict[str, torch.Tensor]]]:
         residual = x
@@ -81,6 +82,7 @@ class ASMBlock(nn.Module):
             slot_mask=slot_mask,
             slot_mask_where=slot_mask_where,
             slot_mask_scope=slot_mask_scope,
+            layer_idx=layer_idx,
         )
         forward_kwargs.update(asa_kwargs)
         attn_out, info = self.attn(
