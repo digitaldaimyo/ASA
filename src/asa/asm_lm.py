@@ -103,7 +103,7 @@ class ASMLanguageModel(nn.Module):
                 slot_mask=slot_mask,
                 slot_mask_where=slot_mask_where,
                 slot_mask_scope=slot_mask_scope,
-                li=li,
+                layer_idx=li,
                 **asa_kwargs,
             )
             if return_info and infos is not None:
