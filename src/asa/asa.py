@@ -1084,7 +1084,6 @@ class AddressedStateAttentionOnline(nn.Module):
 
         return out, info
 
-
 class AddressedStateAttentionIntervene(nn.Module):
     """Refine-geometry logging + refine-delta intervention (orth/par gating)."""
 
@@ -1215,13 +1214,12 @@ class AddressedStateAttentionIntervene(nn.Module):
         self._intv_tau_kind = "pctl"         # "abs" | "pctl"
         self._intv_tau = 0.15                # float | Tensor[H] | list/tuple per-layer
         self._intv_tau_pctl = 75.0           # percentile for tk="pctl"
-        self._intv_tau_per_head = True       # NEW: percentile computed per head if tk="pctl"
+        self._intv_tau_per_head = True       # percentile computed per head if tk="pctl"
         self._intv_mask_mode = "soft"        # "hard" | "soft"
         self._intv_soft_temp = 0.05
         self._intv_head_mask = None          # None | Tensor[H] in {0,1}
         self._intv_score_clip_pctl = 99.0    # clip score at percentile (scalar or per-head via per-head quantile)
         self._log_refine_geom = False        # if True, emit geom_* summaries in info
-        # NOTE: layerwise tau is enabled by setting self._intv_tau to list/tuple (handled in _resolve_tau)
 
     # ----------------------------
     # Small helpers
@@ -1251,7 +1249,6 @@ class AddressedStateAttentionIntervene(nn.Module):
         return torch.exp(diff)
 
     def _default_info_cfg(self) -> Dict:
-        # Existing defaults preserved; new key store_intv_raw defaults False.
         return dict(
             store_read_weights=True,
             store_read_logits=True,
@@ -1260,7 +1257,7 @@ class AddressedStateAttentionIntervene(nn.Module):
             store_out1=False,
             store_delta=False,
             store_slot_w=False,
-            store_intv_raw=False,       # NEW: if True, store raw score/mask/alpha (may be large)
+            store_intv_raw=False,       # if True, store raw score/mask/alpha trajectories
             detach_to_cpu=False,
             time_stride=1,
             batch_stride=1,
@@ -1287,12 +1284,9 @@ class AddressedStateAttentionIntervene(nn.Module):
         return x
 
     # ----------------------------
-    # NEW: tau resolution
+    # Tau resolution
     # ----------------------------
     def _resolve_tau_spec(self, layer_idx: Optional[int]):
-        """Resolve tau spec for this layer:
-           returns: float | Tensor[H]
-        """
         tau_spec = getattr(self, "_intv_tau", 0.15)
         if isinstance(tau_spec, (list, tuple)):
             if layer_idx is None:
@@ -1310,22 +1304,17 @@ class AddressedStateAttentionIntervene(nn.Module):
         tau_pctl: float,
         layer_idx: Optional[int],
     ) -> torch.Tensor:
-        """Return tau as scalar () or per-head [H]."""
-        # explicit tau spec overrides percentile-compute
         tau_spec = self._resolve_tau_spec(layer_idx)
 
-        # abs:
         if tau_kind == "abs":
             if torch.is_tensor(tau_spec):
                 return tau_spec.to(device=score.device, dtype=score.dtype)  # [H]
             return torch.tensor(float(tau_spec), device=score.device, dtype=score.dtype)  # scalar
 
-        # percentile:
         if tau_kind == "pctl":
-            # If tau_spec is a tensor or non-default scalar, treat as explicit override (compat / safety).
             if torch.is_tensor(tau_spec):
                 return tau_spec.to(device=score.device, dtype=score.dtype)  # [H]
-            # compute from data
+
             p = float(tau_pctl) / 100.0
             if getattr(self, "_intv_tau_per_head", True):
                 flat = score.detach().reshape(score.shape[0], score.shape[1], -1)  # [B,H,BL]
@@ -1338,7 +1327,6 @@ class AddressedStateAttentionIntervene(nn.Module):
         raise ValueError(f"Unknown _intv_tau_kind={tau_kind}")
 
     def _clip_score(self, score: torch.Tensor) -> torch.Tensor:
-        """Optional score clipping at percentile; supports per-head clipping when tau_per_head=True."""
         clip_p = getattr(self, "_intv_score_clip_pctl", None)
         if clip_p is None:
             return score
@@ -1365,11 +1353,11 @@ class AddressedStateAttentionIntervene(nn.Module):
     # ----------------------------
     def _apply_refine_intervention(
         self,
-        out1: torch.Tensor,                 # [B,H,L,d]
-        delta: torch.Tensor,                # [B,H,L,d]
+        out1: torch.Tensor,                     # [B,H,L,d]
+        delta: torch.Tensor,                    # [B,H,L,d]
         slot_w_logits: Optional[torch.Tensor],  # [B,H,L,K] (pre-softmax logits), optional
         *,
-        layer_idx: Optional[int] = None,    # NEW optional
+        layer_idx: Optional[int] = None,
         store_raw: bool = False,
     ):
         eps = 1e-8
@@ -1378,7 +1366,6 @@ class AddressedStateAttentionIntervene(nn.Module):
         hm = getattr(self, "_intv_head_mask", None)
         if hm is not None:
             hm = hm.to(device=out1.device).view(1, H, 1, 1).to(dtype=out1.dtype)
-        # else None
 
         out1_norm2 = (out1 * out1).sum(dim=-1, keepdim=True).clamp_min(eps)
         alpha = (delta * out1).sum(dim=-1, keepdim=True) / out1_norm2
@@ -1387,7 +1374,6 @@ class AddressedStateAttentionIntervene(nn.Module):
 
         logs = {}
 
-        # Optional geometry summaries (stable, low-volume)
         if getattr(self, "_log_refine_geom", False):
             out1n = out1.norm(dim=-1).clamp_min(eps)                # [B,H,L]
             dn = delta.norm(dim=-1).clamp_min(eps)                  # [B,H,L]
@@ -1409,16 +1395,18 @@ class AddressedStateAttentionIntervene(nn.Module):
         if mode is None or mode == "off":
             return delta, logs
 
-        # Simple component selectors (compat)
         if mode == "delta_par":
             logs["alpha"] = alpha.squeeze(-1)
             delta_mod = delta_par
+
         elif mode == "delta_orth":
             logs["alpha"] = alpha.squeeze(-1)
             delta_mod = delta_orth
+
         elif mode == "delta_par_plus_orth":
             logs["alpha"] = alpha.squeeze(-1)
             delta_mod = delta_par + delta_orth
+
         elif mode == "orth_gate":
             beta = float(getattr(self, "_intv_beta", 1.0))
             par_beta = float(getattr(self, "_intv_par_beta", 1.0))
@@ -1452,7 +1440,6 @@ class AddressedStateAttentionIntervene(nn.Module):
             tau_pctl = float(getattr(self, "_intv_tau_pctl", 75.0))
             tau = self._compute_tau_from_score(score, tau_kind=tk, tau_pctl=tau_pctl, layer_idx=layer_idx)
 
-            # broadcast tau to [B,H,L]
             if tau.ndim == 0:
                 tau_b = tau
             elif tau.ndim == 1:
@@ -1473,16 +1460,12 @@ class AddressedStateAttentionIntervene(nn.Module):
             else:
                 raise ValueError(f"Unknown _intv_mask_mode={mm}")
 
-            # apply
             delta_mod = par_beta * delta_par + beta * mask.unsqueeze(-1) * delta_orth
 
-            # always keep these lightweight summaries available in logs
-            logs.update(
-                dict(
-                    tau=tau.detach(),
-                )
-            )
-            # raw tensors stored only if requested (to avoid ballooning info)
+            # lightweight always
+            logs.update(dict(tau=tau.detach()))
+
+            # raw only if requested
             if store_raw:
                 logs.update(
                     dict(
@@ -1497,7 +1480,6 @@ class AddressedStateAttentionIntervene(nn.Module):
         else:
             raise ValueError(f"Unknown _intv_mode={mode}")
 
-        # head mask (compat)
         if hm is not None:
             delta_mod = hm * delta_mod + (1.0 - hm) * delta
             logs["head_mask"] = hm.squeeze(0).squeeze(-1).squeeze(-1).detach()
@@ -1519,7 +1501,7 @@ class AddressedStateAttentionIntervene(nn.Module):
         routing_noise_scale: float = 1.0,
         info_level: str = "full",
         info_cfg: Optional[Dict] = None,
-        layer_idx: Optional[int] = None,   # NEW, optional, backward-compatible
+        layer_idx: Optional[int] = None,
     ) -> Tuple[torch.Tensor, Optional[Dict[str, torch.Tensor]]]:
         B, T, C = x.shape
         H, K, d = self.num_heads, self.num_slots, self.head_dim
@@ -1580,7 +1562,6 @@ class AddressedStateAttentionIntervene(nn.Module):
         delta_full = torch.empty((B, H, T, d), device=x.device, dtype=state_dtype) if store_delta else None
         slot_w_full = torch.empty((B, H, T, K), device=x.device, dtype=state_dtype) if store_slot_w else None
 
-        # Read weights needed for slotspace refine compute OR for info
         need_read_weights = bool(self.use_slotspace_refine) or (return_info and store_read_weights)
         read_weights = torch.empty((B, H, T, K), device=x.device, dtype=q_read.dtype) if need_read_weights else None
 
@@ -1625,7 +1606,7 @@ class AddressedStateAttentionIntervene(nn.Module):
             numer_c = numer_c + add
 
             slot_state_c = numer_c / denom_c.clamp_min(1e-8).unsqueeze(-1)
-            slot_state_t = slot_state_c.permute(0, 1, 3, 2, 4).contiguous()  # [B,H,L,K,d]
+            slot_state_t = slot_state_c.permute(0, 1, 3, 2, 4).contiguous()
 
             q_read_c = q_read[:, :, t0:t1, :]
             read_logits_key = torch.einsum("bhld,hkd->bhlk", q_read_c, slot_keys) / math.sqrt(d)
@@ -1728,6 +1709,11 @@ class AddressedStateAttentionIntervene(nn.Module):
         intv_logs_acc: Dict[str, torch.Tensor] = {}
         intv_logs_count = 0
 
+        # RAW buffers live here when requested (this is the actual fix)
+        intv_raw = None
+        if store_intv_raw:
+            intv_raw = {}
+
         if self.use_slotspace_refine:
             slotspace_dtype = state_dtype
             M = self.slotspace_dim
@@ -1788,7 +1774,7 @@ class AddressedStateAttentionIntervene(nn.Module):
 
             gate = self._slotspace_gate(dtype=state_dtype, device=x.device).to(state_dtype)
 
-            # Recompute slot_state scan for refine delta (same as reference)
+            # Recompute slot_state scan for refine delta
             denom_state = torch.zeros((B, H, K), device=x.device, dtype=state_dtype)
             numer_state = torch.zeros((B, H, K, d), device=x.device, dtype=state_dtype)
             m_state = torch.full((B, H, K), float("-inf"), device=x.device, dtype=state_dtype)
@@ -1824,37 +1810,48 @@ class AddressedStateAttentionIntervene(nn.Module):
                 if delta_full is not None:
                     delta_full[:, :, t0:t1, :] = delta
 
-                # Apply intervention in-place
+                # Apply intervention
                 delta_mod, logs = self._apply_refine_intervention(
                     out1=out_h[:, :, t0:t1, :],
                     delta=delta,
-                    slot_w_logits=slot_w_logits[:, :, t0:t1, :] if store_slot_w or store_intv_raw else None,
+                    slot_w_logits=slot_w_logits[:, :, t0:t1, :] if (store_slot_w or store_intv_raw) else None,
                     layer_idx=layer_idx,
                     store_raw=store_intv_raw,
                 )
                 out_h[:, :, t0:t1, :] = out_h[:, :, t0:t1, :] + delta_mod
 
-                # accumulate logs (keep per-head vectors if provided; otherwise scalar)
+                # -----------------------------
+                # FIX: store raw AND still accumulate summaries
+                # -----------------------------
                 if return_info and logs:
                     for klog, v in logs.items():
                         if not torch.is_tensor(v):
                             continue
-                        vv = v.detach().to(torch.float32)
-                        # Summarize large tensors unless store_intv_raw is enabled.
-                        # - geom_* are already [H]
-                        # - tau can be scalar or [H]
-                        # - alpha/score/mask are [B,H,L] when store_raw=True
-                        if vv.ndim == 3 and not store_intv_raw:
-                            vv = vv.mean()  # scalar summary
-                        elif vv.ndim == 3 and store_intv_raw:
-                            # keep raw; will be stored separately later, not accumulated here
+
+                        if v.ndim == 3:
+                            # raw per-token trajectories [B,H,Lchunk] -> buffer [B,H,T]
+                            if store_intv_raw:
+                                if klog not in intv_raw:
+                                    intv_raw[klog] = torch.empty((v.shape[0], v.shape[1], T), device=v.device, dtype=v.dtype)
+                                intv_raw[klog][:, :, t0:t1] = v.detach()
+
+                            # always accumulate per-head summary [H]
+                            vv = v.detach().to(torch.float32).mean(dim=(0, 2))  # [H]
+
+                        elif v.ndim == 1:
+                            vv = v.detach().to(torch.float32)  # [H]
+
+                        elif v.ndim == 0:
+                            vv = v.detach().to(torch.float32)  # scalar
+
+                        else:
                             continue
 
                         if klog not in intv_logs_acc:
                             intv_logs_acc[klog] = vv
                         else:
-                            # must be broadcast-compatible
                             intv_logs_acc[klog] = intv_logs_acc[klog] + vv
+
                     intv_logs_count += 1
 
                 delta_norm_sum = delta_norm_sum + delta.detach().to(torch.float32).norm(dim=-1).sum()
@@ -1879,7 +1876,6 @@ class AddressedStateAttentionIntervene(nn.Module):
                 "intv_mode": getattr(self, "_intv_mode", "off"),
             }
 
-            # preserve existing behavior for alibi
             if alibi_bias_applied is not None and info_level == "full":
                 info["alibi_bias_applied"] = self._store_tensor(
                     alibi_bias_applied.to(torch.float32), cfg=info_cfg, kind="other"
@@ -1940,24 +1936,34 @@ class AddressedStateAttentionIntervene(nn.Module):
             else:
                 info["slot_w"] = None
 
-            # NEW: provide layer_idx for callers that wire it through (harmless otherwise)
             info["layer_idx"] = torch.tensor(-1 if layer_idx is None else int(layer_idx))
 
-            # Export accumulated summaries (geom_* are [H], tau may be scalar or [H])
+            # averaged summaries
             if intv_logs_count > 0:
                 for klog, v in intv_logs_acc.items():
                     info[klog] = (v / float(intv_logs_count)).detach().cpu()
 
-            # If store_intv_raw=True, users typically want raw tensors; we expose them as None here by default
-            # (because raw tensors are already included in logs only at application-time; we didn't persist them globally).
-            # If you want full-trajectory raw tensors, enable store_out1/store_delta/store_slot_w and/or modify
-            # _apply_refine_intervention to write into preallocated buffers.
+            # -----------------------------
+            # FIX: export raw tensors when requested
+            # -----------------------------
             if store_intv_raw:
-                info.setdefault("intv_raw_enabled", torch.tensor(True))
+                info["intv_raw_enabled"] = torch.tensor(True)
+                if intv_raw is not None:
+                    name_map = {
+                        "score": "intv_score",
+                        "mask": "intv_mask",
+                        "alpha": "intv_alpha",
+                        "out1_norm": "intv_out1_norm",
+                        "dpar_norm": "intv_dpar_norm",
+                        "dorth_norm": "intv_dorth_norm",
+                    }
+                    for kraw, buf in intv_raw.items():
+                        info[name_map.get(kraw, kraw)] = buf.detach().to("cpu", non_blocking=True)
             else:
-                info.setdefault("intv_raw_enabled", torch.tensor(False))
+                info["intv_raw_enabled"] = torch.tensor(False)
 
         return out, info
+        
 
 class AddressedStateAttentionOldIntervene(nn.Module):
     """Refine-geometry logging + refine-delta intervention (orth/par gating)."""
