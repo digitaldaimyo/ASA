@@ -1086,7 +1086,7 @@ class AddressedStateAttentionOnline(nn.Module):
 
 
 class AddressedStateAttentionIntervene(nn.Module):
-    """Refine-geometry logging + refine-delta intervention (orth/par gating).
+    """Refine-geometry logging + refine-delta intervention (orth/par gating)."""
 
     def __init__(
         self,
